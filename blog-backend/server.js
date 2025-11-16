@@ -18,10 +18,16 @@ if (!fs.existsSync(uploadDir)) {
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: "https://obcms.netlify.app",  
+const corsOptions = {
+  origin: "https://obcms.netlify.app",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // <-- IMPORTANT FOR PREFLIGHT
+
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
