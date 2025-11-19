@@ -19,22 +19,16 @@ const app = express();
 
 // Middleware
 const corsOptions = {
-  origin: ["https://obcms.netlify.app", "http://localhost:3000"],
+  origin: "https://obcms.netlify.app",
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 };
 
-
 app.use(cors(corsOptions));
 // Handle preflight correctly
 //app.options("/api/*", cors(corsOptions));
-app.options("*", cors(corsOptions));
-// Add request logging
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
-});
+
 
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
@@ -333,22 +327,9 @@ app.post('/api/themes', authenticateToken, upload.single('image'), async (req, r
 // ============= SUPPORT ROUTES =============
 
 // Submit support ticket
-// Submit support ticket
-// Submit support ticket
 app.post('/api/support', async (req, res) => {
-  console.log('Support route hit!');
-  console.log('Request body:', req.body);
-  
   try {
     const { name, email, subject, message } = req.body;
-
-    // Validation
-    if (!name || !email || !subject || !message) {
-      return res.status(400).json({ 
-        message: 'All fields are required',
-        received: { name, email, subject, message }
-      });
-    }
 
     // Save ticket to database
     const ticket = new SupportTicket({
@@ -359,32 +340,10 @@ app.post('/api/support', async (req, res) => {
     });
 
     await ticket.save();
-    console.log('✅ Ticket saved:', ticket._id);
 
-    // Try to send emails asynchronously (don't wait or fail if it doesn't work)
-    sendSupportEmails(ticket, name, email, subject, message).catch(err => {
-      console.error('⚠️ Email sending failed (non-critical):', err.message);
-    });
-
-    // Respond immediately without waiting for email
-    res.status(201).json({ 
-      message: 'Support ticket submitted successfully! We will contact you at ' + email + ' soon.',
-      ticketId: ticket._id 
-    });
-  } catch (error) {
-    console.error('❌ Support ticket error:', error);
-    res.status(500).json({ 
-      message: 'Error submitting ticket', 
-      error: error.message 
-    });
-  }
-});
-
-// Async function to send emails (won't block the response)
-async function sendSupportEmails(ticket, name, email, subject, message) {
-  try {
+    // Send email notification
     const mailOptions = {
-      from: 'indranilganguly2025@gmail.com',
+      from: email,
       to: 'indranilganguly2025@gmail.com',
       subject: `Support Ticket: ${subject}`,
       html: `
@@ -399,6 +358,7 @@ async function sendSupportEmails(ticket, name, email, subject, message) {
       `
     };
 
+    // Send confirmation email to user
     const userMailOptions = {
       from: 'indranilganguly2025@gmail.com',
       to: email,
@@ -417,12 +377,16 @@ async function sendSupportEmails(ticket, name, email, subject, message) {
 
     await transporter.sendMail(mailOptions);
     await transporter.sendMail(userMailOptions);
-    console.log('✅ Emails sent successfully');
+
+    res.status(201).json({ 
+      message: 'Support ticket submitted successfully. Check your email for confirmation.',
+      ticketId: ticket._id 
+    });
   } catch (error) {
-    console.error('⚠️ Email error:', error.message);
-    // Emails failed but ticket was saved - that's okay
+    console.error('Support ticket error:', error);
+    res.status(500).json({ message: 'Error submitting ticket', error: error.message });
   }
-}
+});
 
 // Get all support tickets (admin only - you can add admin middleware)
 app.get('/api/support', authenticateToken, async (req, res) => {
