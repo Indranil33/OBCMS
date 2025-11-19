@@ -29,7 +29,12 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Handle preflight correctly
 //app.options("/api/*", cors(corsOptions));
-
+app.options("*", cors(corsOptions));
+// Add request logging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
 
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
@@ -328,9 +333,21 @@ app.post('/api/themes', authenticateToken, upload.single('image'), async (req, r
 // ============= SUPPORT ROUTES =============
 
 // Submit support ticket
+// Submit support ticket
 app.post('/api/support', async (req, res) => {
+  console.log('Support route hit!'); // Debug
+  console.log('Request body:', req.body); // Debug
+  
   try {
     const { name, email, subject, message } = req.body;
+
+    // Validation
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ 
+        message: 'All fields are required',
+        received: { name, email, subject, message }
+      });
+    }
 
     // Save ticket to database
     const ticket = new SupportTicket({
@@ -341,51 +358,60 @@ app.post('/api/support', async (req, res) => {
     });
 
     await ticket.save();
+    console.log('Ticket saved:', ticket._id); // Debug
 
-    // Send email notification
-    const mailOptions = {
-      from: email,
-      to: 'indranilganguly2025@gmail.com',
-      subject: `Support Ticket: ${subject}`,
-      html: `
-        <h2>New Support Ticket</h2>
-        <p><strong>From:</strong> ${name} (${email})</p>
-        <p><strong>Subject:</strong> ${subject}</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-        <hr>
-        <p><small>Ticket ID: ${ticket._id}</small></p>
-        <p><small>Submitted at: ${new Date().toLocaleString()}</small></p>
-      `
-    };
+    // Try to send emails (don't fail if email fails)
+    try {
+      const mailOptions = {
+        from: 'indranilganguly2025@gmail.com',
+        to: 'indranilganguly2025@gmail.com',
+        subject: `Support Ticket: ${subject}`,
+        html: `
+          <h2>New Support Ticket</h2>
+          <p><strong>From:</strong> ${name} (${email})</p>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <p><strong>Message:</strong></p>
+          <p>${message}</p>
+          <hr>
+          <p><small>Ticket ID: ${ticket._id}</small></p>
+          <p><small>Submitted at: ${new Date().toLocaleString()}</small></p>
+        `
+      };
 
-    // Send confirmation email to user
-    const userMailOptions = {
-      from: 'indranilganguly2025@gmail.com',
-      to: email,
-      subject: `Support Ticket Received - ${subject}`,
-      html: `
-        <h2>Thank you for contacting us!</h2>
-        <p>Hi ${name},</p>
-        <p>We've received your support ticket and will get back to you shortly.</p>
-        <p><strong>Your message:</strong></p>
-        <p>${message}</p>
-        <hr>
-        <p><strong>Ticket ID:</strong> ${ticket._id}</p>
-        <p>Best regards,<br>Blog CMS Support Team</p>
-      `
-    };
+      const userMailOptions = {
+        from: 'indranilganguly2025@gmail.com',
+        to: email,
+        subject: `Support Ticket Received - ${subject}`,
+        html: `
+          <h2>Thank you for contacting us!</h2>
+          <p>Hi ${name},</p>
+          <p>We've received your support ticket and will get back to you shortly.</p>
+          <p><strong>Your message:</strong></p>
+          <p>${message}</p>
+          <hr>
+          <p><strong>Ticket ID:</strong> ${ticket._id}</p>
+          <p>Best regards,<br>Blog CMS Support Team</p>
+        `
+      };
 
-    await transporter.sendMail(mailOptions);
-    await transporter.sendMail(userMailOptions);
+      await transporter.sendMail(mailOptions);
+      await transporter.sendMail(userMailOptions);
+      console.log('Emails sent successfully'); // Debug
+    } catch (emailError) {
+      console.error('Email error (non-critical):', emailError);
+      // Continue even if email fails
+    }
 
     res.status(201).json({ 
-      message: 'Support ticket submitted successfully. Check your email for confirmation.',
+      message: 'Support ticket submitted successfully. We will contact you soon!',
       ticketId: ticket._id 
     });
   } catch (error) {
     console.error('Support ticket error:', error);
-    res.status(500).json({ message: 'Error submitting ticket', error: error.message });
+    res.status(500).json({ 
+      message: 'Error submitting ticket', 
+      error: error.message 
+    });
   }
 });
 
