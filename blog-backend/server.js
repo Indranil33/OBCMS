@@ -361,7 +361,7 @@ app.post('/api/support', async (req, res) => {
     // Send confirmation email to user
     const userMailOptions = {
       from: 'indranilganguly2025@gmail.com',
-      to: 'indranilganguly2004@gmsil.com',//email,
+      to: email,
       subject: `Support Ticket Received - ${subject}`,
       html: `
         <h2>Thank you for contacting us!</h2>

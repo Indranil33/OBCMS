@@ -732,8 +732,8 @@
             tabs.forEach(tab => tab.classList.remove('active'));
             sections.forEach(sec => sec.classList.remove('active'));
 
-            //event.target.classList.add('active');
-            section.target.classList.add('active');
+            event.target.classList.add('active');
+            //section.target.classList.add('active')
             document.getElementById(section + 'Section').classList.add('active');
 
             if (section === 'posts') loadPosts();
@@ -965,7 +965,7 @@
         }
 
         async function handleSupportSubmit(e) {
-            if(e) e.preventDefault();
+            e.preventDefault();
 
             const name = document.getElementById('supportName').value;
             const email = document.getElementById('supportEmail').value;
