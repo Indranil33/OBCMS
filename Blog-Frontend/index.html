@@ -900,7 +900,7 @@
         }
 
         async function handleUploadTheme(e) {
-            if(e) e.preventDefault();
+            e.preventDefault();
             const title = document.getElementById('themeTitle').value;
             const description = document.getElementById('themeDescription').value;
             const imageFile = document.getElementById('themeImage').files[0];
@@ -965,7 +965,7 @@
         }
 
         async function handleSupportSubmit(e) {
-            e.preventDefault();
+            if(e) e.preventDefault();
 
             const name = document.getElementById('supportName').value;
             const email = document.getElementById('supportEmail').value;
