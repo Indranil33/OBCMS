@@ -334,9 +334,10 @@ app.post('/api/themes', authenticateToken, upload.single('image'), async (req, r
 
 // Submit support ticket
 // Submit support ticket
+// Submit support ticket
 app.post('/api/support', async (req, res) => {
-  console.log('Support route hit!'); // Debug
-  console.log('Request body:', req.body); // Debug
+  console.log('Support route hit!');
+  console.log('Request body:', req.body);
   
   try {
     const { name, email, subject, message } = req.body;
@@ -358,62 +359,70 @@ app.post('/api/support', async (req, res) => {
     });
 
     await ticket.save();
-    console.log('Ticket saved:', ticket._id); // Debug
+    console.log('✅ Ticket saved:', ticket._id);
 
-    // Try to send emails (don't fail if email fails)
-    try {
-      const mailOptions = {
-        from: 'indranilganguly2025@gmail.com',
-        to: 'indranilganguly2025@gmail.com',
-        subject: `Support Ticket: ${subject}`,
-        html: `
-          <h2>New Support Ticket</h2>
-          <p><strong>From:</strong> ${name} (${email})</p>
-          <p><strong>Subject:</strong> ${subject}</p>
-          <p><strong>Message:</strong></p>
-          <p>${message}</p>
-          <hr>
-          <p><small>Ticket ID: ${ticket._id}</small></p>
-          <p><small>Submitted at: ${new Date().toLocaleString()}</small></p>
-        `
-      };
+    // Try to send emails asynchronously (don't wait or fail if it doesn't work)
+    sendSupportEmails(ticket, name, email, subject, message).catch(err => {
+      console.error('⚠️ Email sending failed (non-critical):', err.message);
+    });
 
-      const userMailOptions = {
-        from: 'indranilganguly2025@gmail.com',
-        to: email,
-        subject: `Support Ticket Received - ${subject}`,
-        html: `
-          <h2>Thank you for contacting us!</h2>
-          <p>Hi ${name},</p>
-          <p>We've received your support ticket and will get back to you shortly.</p>
-          <p><strong>Your message:</strong></p>
-          <p>${message}</p>
-          <hr>
-          <p><strong>Ticket ID:</strong> ${ticket._id}</p>
-          <p>Best regards,<br>Blog CMS Support Team</p>
-        `
-      };
-
-      await transporter.sendMail(mailOptions);
-      await transporter.sendMail(userMailOptions);
-      console.log('Emails sent successfully'); // Debug
-    } catch (emailError) {
-      console.error('Email error (non-critical):', emailError);
-      // Continue even if email fails
-    }
-
+    // Respond immediately without waiting for email
     res.status(201).json({ 
-      message: 'Support ticket submitted successfully. We will contact you soon!',
+      message: 'Support ticket submitted successfully! We will contact you at ' + email + ' soon.',
       ticketId: ticket._id 
     });
   } catch (error) {
-    console.error('Support ticket error:', error);
+    console.error('❌ Support ticket error:', error);
     res.status(500).json({ 
       message: 'Error submitting ticket', 
       error: error.message 
     });
   }
 });
+
+// Async function to send emails (won't block the response)
+async function sendSupportEmails(ticket, name, email, subject, message) {
+  try {
+    const mailOptions = {
+      from: 'indranilganguly2025@gmail.com',
+      to: 'indranilganguly2025@gmail.com',
+      subject: `Support Ticket: ${subject}`,
+      html: `
+        <h2>New Support Ticket</h2>
+        <p><strong>From:</strong> ${name} (${email})</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+        <hr>
+        <p><small>Ticket ID: ${ticket._id}</small></p>
+        <p><small>Submitted at: ${new Date().toLocaleString()}</small></p>
+      `
+    };
+
+    const userMailOptions = {
+      from: 'indranilganguly2025@gmail.com',
+      to: email,
+      subject: `Support Ticket Received - ${subject}`,
+      html: `
+        <h2>Thank you for contacting us!</h2>
+        <p>Hi ${name},</p>
+        <p>We've received your support ticket and will get back to you shortly.</p>
+        <p><strong>Your message:</strong></p>
+        <p>${message}</p>
+        <hr>
+        <p><strong>Ticket ID:</strong> ${ticket._id}</p>
+        <p>Best regards,<br>Blog CMS Support Team</p>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    await transporter.sendMail(userMailOptions);
+    console.log('✅ Emails sent successfully');
+  } catch (error) {
+    console.error('⚠️ Email error:', error.message);
+    // Emails failed but ticket was saved - that's okay
+  }
+}
 
 // Get all support tickets (admin only - you can add admin middleware)
 app.get('/api/support', authenticateToken, async (req, res) => {
